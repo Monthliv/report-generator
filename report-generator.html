@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MONTHLIV 매출 보고서 생성기</title>
+<style>
+  :root{
+    --ink:#1c1a17;
+    --paper:#faf8f4;
+    --line:#d8d2c6;
+    --accent:#2f5233;
+    --accent-soft:#e7ede8;
+    --amber:#b5762b;
+    --danger:#a3402f;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    padding:40px 20px 80px;
+  }
+  .wrap{max-width:900px;margin:0 auto;}
+  header{margin-bottom:32px;}
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:.14em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  h1{font-size:28px;margin:0 0 6px;letter-spacing:-0.01em;}
+  .sub{color:#6b6459;font-size:14px;line-height:1.6;}
+
+  .card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:24px;
+    margin-bottom:20px;
+  }
+  .card h2{
+    font-size:14px;
+    margin:0 0 14px;
+    color:var(--accent);
+    display:flex;align-items:center;gap:8px;
+  }
+  .card h2 .num{
+    font-family:var(--mono);
+    background:var(--accent-soft);
+    color:var(--accent);
+    width:20px;height:20px;
+    border-radius:6px;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:11px;
+  }
+
+  /* 월 선택 */
+  .month-row{display:flex;align-items:center;gap:12px;}
+  .month-row label{font-size:13px;color:#6b6459;}
+  select#monthSelect{
+    font-family:var(--mono);
+    font-size:15px;
+    padding:8px 12px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:#fffefb;
+    color:var(--ink);
+  }
+  .today-note{font-size:12px;color:#a39c8e;margin-left:auto;}
+
+  /* 지점 관리 */
+  .branch-manager{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .branch-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--accent-soft);
+    color:var(--accent);
+    border-radius:999px;
+    padding:6px 8px 6px 14px;
+    font-size:13px;
+    font-weight:600;
+  }
+  .branch-chip button{
+    background:#fff;
+    border:none;
+    color:var(--accent);
+    width:18px;height:18px;
+    border-radius:50%;
+    cursor:pointer;
+    font-size:12px;
+    line-height:1;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .branch-chip button:hover{background:var(--danger);color:#fff;}
+  .branch-add-form{display:flex;gap:8px;}
+  .branch-add-form input{
+    flex:1;
+    max-width:220px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:9px 12px;
+    font-size:13px;
+    background:#fffefb;
+  }
+  .branch-add-form input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .branch-add-form button{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:9px 16px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .branch-add-form button:hover{opacity:.92;}
+  .session-note{font-size:11px;color:#a39c8e;margin-top:10px;line-height:1.6;}
+
+  /* 지점 행 */
+  .rows{display:flex;flex-direction:column;gap:12px;}
+  .row{
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:0;
+    display:flex;
+    align-items:stretch;
+    background:#fffefb;
+    overflow:hidden;
+    position:relative;
+  }
+  .row .field{
+    padding:12px 14px;
+  }
+  .row .field-label{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:#a39c8e;
+    margin-bottom:6px;
+    display:block;
+  }
+  .row .branch-field{
+    width:150px;
+    flex-shrink:0;
+    background:var(--accent-soft);
+    border-right:1px solid var(--line);
+  }
+  .row .branch-field .field-label{color:var(--accent);opacity:.75;}
+  .row select.branch-select{
+    width:100%;
+    font-family:var(--mono);
+    font-size:14px;
+    padding:8px 8px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--accent);
+    font-weight:700;
+  }
+  .row .data-field{
+    flex:1;
+    padding-right:40px;
+  }
+  .row textarea{
+    width:100%;
+    min-height:40px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+    font-family:var(--mono);
+    font-size:13px;
+    line-height:1.6;
+    resize:vertical;
+    background:#fff;
+  }
+  .row textarea:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .row .remove-row{
+    position:absolute;
+    top:8px;right:8px;
+    background:none;
+    border:none;
+    color:#b0a89a;
+    cursor:pointer;
+    font-size:18px;
+    line-height:1;
+    padding:6px;
+  }
+  .row .remove-row:hover{color:var(--danger);}
+
+  .hint{font-size:12px;color:#8a8377;margin-top:12px;line-height:1.7;}
+  .hint code{
+    background:var(--accent-soft);
+    padding:1px 6px;
+    border-radius:5px;
+    font-family:var(--mono);
+    color:var(--accent);
+  }
+
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  button.primary{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:12px 20px;
+    border-radius:10px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button.primary:hover{opacity:.92;}
+  button.ghost{
+    background:none;
+    border:1px solid var(--line);
+    padding:12px 16px;
+    border-radius:10px;
+    font-size:13px;
+    color:#6b6459;
+    cursor:pointer;
+  }
+  button.add-row{
+    background:var(--accent-soft);
+    color:var(--accent);
+    border:1px dashed var(--accent);
+    padding:10px 16px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    align-self:flex-start;
+  }
+  button.add-row:hover{background:var(--accent);color:#fff;}
+
+  #error{color:var(--danger);font-size:13px;margin-top:10px;display:none;white-space:pre-wrap;}
+
+  #output-section{display:none;}
+  .report-block{
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:20px 22px;
+    margin-bottom:14px;
+    background:#fffefb;
+    position:relative;
+  }
+  .report-block pre{
+    white-space:pre-wrap;
+    font-family:var(--mono);
+    font-size:13.5px;
+    line-height:1.85;
+    margin:0;
+    color:var(--ink);
+  }
+  .copy-one{
+    position:absolute;
+    top:14px;right:14px;
+    background:var(--accent-soft);
+    color:var(--accent);
+    border:none;
+    border-radius:8px;
+    padding:6px 10px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .copy-one:hover{background:var(--accent);color:#fff;}
+
+  footer{text-align:center;font-size:11px;color:#a39c8e;margin-top:40px;letter-spacing:.04em;}
+
+  .toast{
+    position:fixed;bottom:28px;left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;
+    padding:10px 18px;border-radius:10px;font-size:13px;
+    opacity:0;transition:all .25s ease;pointer-events:none;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">MONTHLIV · Internal Tool</div>
+    <h1>매출 보고서 생성기</h1>
+    <div class="sub">벤디트 대시보드에서 지점별 통계를 복사해서 붙여넣으면, 보고 양식대로 자동 정리됩니다.</div>
+  </header>
+
+  <div class="card">
+    <h2><span class="num">1</span>보고 대상 월</h2>
+    <div class="month-row">
+      <label for="monthSelect">월 선택</label>
+      <select id="monthSelect"></select>
+      <span class="today-note" id="todayNote"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">2</span>지점 관리</h2>
+    <div class="branch-manager" id="branchManager"></div>
+    <div class="branch-add-form">
+      <input type="text" id="newBranchInput" placeholder="새 지점명 입력 (예: 신림)" maxlength="20">
+      <button id="addBranchBtn">+ 지점 추가</button>
+    </div>
+    <div class="session-note">이 목록은 브라우저를 새로고침하면 처음 상태(6개 지점)로 초기화돼요. 계속 유지하고 싶으면 코드 안 <code style="font-family:var(--mono);background:var(--accent-soft);padding:1px 6px;border-radius:5px;color:var(--accent);">BRANCHES</code> 배열을 직접 수정해 주세요.</div>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">3</span>지점별 데이터</h2>
+    <div class="rows" id="rows"></div>
+    <button class="add-row" id="addRowBtn" style="margin-top:12px;">+ 지점 행 추가</button>
+    <div class="hint">
+      각 행에서 지점을 먼저 선택하고, 그 옆 칸에 해당 지점의 통계를 붙여넣어 주세요.<br>
+      순서: <code>총객실수  가동객실수  가동율  객단가  객실당매출  총매출</code> (탭 또는 공백으로 구분, 예: 벤디트 표에서 그대로 드래그해서 복사)
+    </div>
+    <div class="actions">
+      <button class="primary" id="generateBtn">보고서 생성</button>
+      <button class="ghost" id="clearBtn">전체 지우기</button>
+    </div>
+    <div id="error"></div>
+  </div>
+
+  <div class="card" id="output-section">
+    <h2><span class="num">4</span>생성된 보고서</h2>
+    <div id="reportList"></div>
+    <div class="actions">
+      <button class="primary" id="copyAllBtn">전체 복사</button>
+    </div>
+  </div>
+
+  <footer>MONTHLIV · A New Way of Life</footer>
+</div>
+
+<div class="toast" id="toast">복사되었습니다</div>
+
+<script>
+// 초기 지점 목록. "+ 지점 추가"로 늘어난 지점은 새로고침하면 이 목록으로 돌아갑니다.
+const DEFAULT_BRANCHES = ["을지로", "광장시장", "종로종각", "건대성수", "충무로", "청량리"];
+let BRANCHES = [...DEFAULT_BRANCHES];
+
+let rowCounter = 0;
+
+// ---------- 지점 관리 (추가/삭제) ----------
+function renderBranchManager(){
+  const el = document.getElementById('branchManager');
+  el.innerHTML = '';
+  BRANCHES.forEach(b => {
+    const chip = document.createElement('span');
+    chip.className = 'branch-chip';
+    chip.innerHTML = `${b} <button title="삭제" data-branch="${b}">×</button>`;
+    chip.querySelector('button').addEventListener('click', () => removeBranch(b));
+    el.appendChild(chip);
+  });
+}
+
+function refreshAllBranchSelects(){
+  document.querySelectorAll('#rows .branch-select').forEach(sel => {
+    const current = sel.value;
+    const stillExists = BRANCHES.includes(current);
+    sel.innerHTML = branchOptionsHTML(stillExists ? current : BRANCHES[0]);
+  });
+}
+
+function addBranch(name){
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  BRANCHES.push(trimmed); // 중복은 신경 쓰지 않음
+  renderBranchManager();
+  refreshAllBranchSelects();
+}
+
+function removeBranch(name){
+  const idx = BRANCHES.indexOf(name);
+  if (idx === -1) return;
+  BRANCHES.splice(idx, 1);
+  if (BRANCHES.length === 0) BRANCHES.push('지점1'); // 최소 1개는 유지
+  renderBranchManager();
+  refreshAllBranchSelects();
+}
+
+document.getElementById('addBranchBtn').addEventListener('click', () => {
+  const input = document.getElementById('newBranchInput');
+  addBranch(input.value);
+  input.value = '';
+  input.focus();
+});
+document.getElementById('newBranchInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('addBranchBtn').click();
+  }
+});
+
+function cleanNumber(str){
+  return str.replace(/[,%원\s]/g, '');
+}
+function formatNumber(n){
+  return Number(n).toLocaleString('ko-KR');
+}
+
+// ---------- 월 선택 ----------
+function initMonthSelect(){
+  const sel = document.getElementById('monthSelect');
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  for(let m = 1; m <= 12; m++){
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = `${m}월`;
+    if(m === currentMonth) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  document.getElementById('todayNote').textContent =
+    `오늘: ${now.getFullYear()}년 ${currentMonth}월 ${now.getDate()}일 (기본값: 이번달)`;
+}
+
+// ---------- 지점 행 ----------
+function branchOptionsHTML(selected){
+  return BRANCHES.map(b => `<option value="${b}" ${b===selected?'selected':''}>${b}</option>`).join('');
+}
+
+function addRow(defaultBranch){
+  rowCounter++;
+  const rowsEl = document.getElementById('rows');
+  const usedBranches = Array.from(rowsEl.querySelectorAll('.branch-select')).map(s => s.value);
+  const nextBranch = defaultBranch || BRANCHES.find(b => !usedBranches.includes(b)) || BRANCHES[0];
+
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.dataset.id = rowCounter;
+  row.innerHTML = `
+    <div class="field branch-field">
+      <span class="field-label">지점</span>
+      <select class="branch-select">${branchOptionsHTML(nextBranch)}</select>
+    </div>
+    <div class="field data-field">
+      <span class="field-label">붙여넣기</span>
+      <textarea class="data-input" rows="1" placeholder="예: 248	238	96%	214,699	206,041	51,098,244"></textarea>
+    </div>
+    <button class="remove-row" title="이 행 삭제">×</button>
+  `;
+  row.querySelector('.remove-row').addEventListener('click', () => {
+    row.remove();
+  });
+  rowsEl.appendChild(row);
+}
+
+document.getElementById('addRowBtn').addEventListener('click', () => addRow());
+
+// ---------- 파싱 ----------
+function parseRowValue(raw, branchName){
+  let cols = raw.includes('\t') ? raw.split('\t') : raw.trim().split(/\s{1,}/);
+  cols = cols.map(c => c.trim()).filter(c => c.length > 0);
+
+  // 맨 앞에 지점명이 실수로 같이 붙여넣어진 경우 자동으로 걸러내기
+  if (cols.length >= 7) {
+    cols = cols.slice(cols.length - 6);
+  }
+
+  if (cols.length < 6) {
+    throw new Error(`[${branchName}] 값이 6개(총객실수/가동객실수/가동율/객단가/객실당매출/총매출) 미만입니다.`);
+  }
+
+  const [total, occupied, rate, adr, revpar, revenue] = cols.slice(0, 6).map(cleanNumber);
+
+  [total, occupied, adr, revpar, revenue].forEach(v => {
+    if (v === '' || isNaN(Number(v))) {
+      throw new Error(`[${branchName}] 숫자로 인식되지 않는 값이 있습니다: "${raw}"`);
+    }
+  });
+
+  return {
+    branch: branchName,
+    total: Number(total),
+    occupied: Number(occupied),
+    rate: rate.replace('%',''),
+    adr: Number(adr),
+    revpar: Number(revpar),
+    revenue: Number(revenue),
+  };
+}
+
+function buildReportText(row, month){
+  return `[먼슬리브 ${row.branch} 호텔스테이]
+${month}월.
+총객실수 ${row.occupied}/${row.total} 가동중, 가동율 ${row.rate}%
+객단가 ${formatNumber(row.adr)}원, 객실당 매출 ${formatNumber(row.revpar)}원, ${month}월 총매출 ${formatNumber(row.revenue)}원`;
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg || '복사되었습니다';
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), 1600);
+}
+
+document.getElementById('generateBtn').addEventListener('click', () => {
+  const errBox = document.getElementById('error');
+  errBox.style.display = 'none';
+  errBox.textContent = '';
+
+  const rowEls = Array.from(document.querySelectorAll('#rows .row'));
+  if (rowEls.length === 0) {
+    errBox.textContent = '먼저 지점 행을 추가하고 데이터를 입력해 주세요.';
+    errBox.style.display = 'block';
+    return;
+  }
+
+  const month = document.getElementById('monthSelect').value;
+  let rows;
+  try {
+    rows = rowEls.map(rowEl => {
+      const branch = rowEl.querySelector('.branch-select').value;
+      const raw = rowEl.querySelector('.data-input').value;
+      if (!raw.trim()) {
+        throw new Error(`[${branch}] 데이터가 비어 있습니다.`);
+      }
+      return parseRowValue(raw, branch);
+    });
+  } catch (e) {
+    errBox.textContent = e.message;
+    errBox.style.display = 'block';
+    document.getElementById('output-section').style.display = 'none';
+    return;
+  }
+
+  const listEl = document.getElementById('reportList');
+  listEl.innerHTML = '';
+  const allTexts = [];
+
+  rows.forEach((row, idx) => {
+    const text = buildReportText(row, month);
+    allTexts.push(text);
+    const block = document.createElement('div');
+    block.className = 'report-block';
+    block.innerHTML = `<button class="copy-one" data-idx="${idx}">복사</button><pre></pre>`;
+    block.querySelector('pre').textContent = text;
+    listEl.appendChild(block);
+  });
+
+  listEl.querySelectorAll('.copy-one').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.idx);
+      navigator.clipboard.writeText(allTexts[idx]).then(()=> showToast('이 지점 보고서가 복사되었습니다'));
+    });
+  });
+
+  document.getElementById('output-section').style.display = 'block';
+  window.__allTexts = allTexts;
+});
+
+document.getElementById('copyAllBtn').addEventListener('click', () => {
+  if (!window.__allTexts || !window.__allTexts.length) return;
+  navigator.clipboard.writeText(window.__allTexts.join('\n\n')).then(()=> showToast('전체 보고서가 복사되었습니다'));
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('rows').innerHTML = '';
+  BRANCHES.forEach(b => addRow(b));
+  document.getElementById('output-section').style.display = 'none';
+  document.getElementById('error').style.display = 'none';
+});
+
+// ---------- 초기화 ----------
+initMonthSelect();
+renderBranchManager();
+BRANCHES.forEach(b => addRow(b));
+</script>
+</body>
+</html>
