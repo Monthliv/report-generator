@@ -99,7 +99,7 @@
     display:inline-flex;align-items:center;justify-content:center;
   }
   .branch-chip button:hover{background:var(--danger);color:#fff;}
-  .branch-add-form{display:flex;gap:8px;}
+  .branch-add-form{display:flex;flex-wrap:wrap;gap:8px;}
   .branch-add-form input{
     flex:1;
     max-width:220px;
@@ -122,6 +122,9 @@
     white-space:nowrap;
   }
   .branch-add-form button:hover{opacity:.92;}
+  .branch-add-form button.save-btn{background:var(--amber);}
+  .branch-add-form button.reset-btn{background:none;border:1px solid var(--line);color:#6b6459;}
+  .branch-add-form button.reset-btn:hover{background:var(--accent-soft);opacity:1;}
   .session-note{font-size:11px;color:#a39c8e;margin-top:10px;line-height:1.6;}
 
   /* 지점 행 */
@@ -331,8 +334,10 @@
     <div class="branch-add-form">
       <input type="text" id="newBranchInput" placeholder="새 지점명 입력 (예: 신림)" maxlength="20">
       <button id="addBranchBtn">+ 지점 추가</button>
+      <button id="saveBranchesBtn" class="save-btn">지점 목록 저장</button>
+      <button id="resetBranchesBtn" class="reset-btn">기본값으로 초기화</button>
     </div>
-    <div class="session-note">이 목록은 브라우저를 새로고침하면 처음 상태(6개 지점)로 초기화돼요. 계속 유지하고 싶으면 코드 안 <code style="font-family:var(--mono);background:var(--accent-soft);padding:1px 6px;border-radius:5px;color:var(--accent);">BRANCHES</code> 배열을 직접 수정해 주세요.</div>
+    <div class="session-note" id="branchSessionNote"></div>
   </div>
 
   <div class="card">
@@ -376,11 +381,55 @@
 <div class="toast" id="toast">복사되었습니다</div>
 
 <script>
-// 초기 지점 목록. "+ 지점 추가"로 늘어난 지점은 새로고침하면 이 목록으로 돌아갑니다.
+// 초기 지점 목록. 저장된 지점 목록이 없을 때의 기본값입니다.
 const DEFAULT_BRANCHES = ["을지로", "광장시장", "종로종각", "건대성수", "충무로", "청량리"];
-let BRANCHES = [...DEFAULT_BRANCHES];
+const BRANCHES_STORAGE_KEY = 'monthliv_branches_v1';
+
+function loadStoredBranches(){
+  try {
+    const raw = localStorage.getItem(BRANCHES_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(b => typeof b === 'string' && b.trim())) {
+      return parsed;
+    }
+  } catch (e) {}
+  return null;
+}
+
+let BRANCHES = loadStoredBranches() || [...DEFAULT_BRANCHES];
 
 let rowCounter = 0;
+
+function updateBranchSessionNote(){
+  const note = document.getElementById('branchSessionNote');
+  const saved = loadStoredBranches();
+  const isSaved = saved && JSON.stringify(saved) === JSON.stringify(BRANCHES);
+  note.textContent = isSaved
+    ? '현재 지점 목록이 이 브라우저에 저장되어 있어요. 새로고침해도 유지됩니다.'
+    : '지점을 추가/삭제한 뒤 "지점 목록 저장"을 눌러야 새로고침 후에도 유지돼요. 저장하지 않으면 마지막으로 저장했던 목록(또는 기본 6개 지점)으로 돌아가요.';
+}
+
+function saveBranches(){
+  try {
+    localStorage.setItem(BRANCHES_STORAGE_KEY, JSON.stringify(BRANCHES));
+    updateBranchSessionNote();
+    showToast('지점 목록이 저장되었습니다');
+  } catch (e) {
+    showToast('저장에 실패했습니다');
+  }
+}
+
+function resetBranchesToDefault(){
+  BRANCHES = [...DEFAULT_BRANCHES];
+  try { localStorage.removeItem(BRANCHES_STORAGE_KEY); } catch (e) {}
+  renderBranchManager();
+  refreshAllBranchSelects();
+  showToast('기본 지점 목록(6개)으로 초기화되었습니다');
+}
+
+document.getElementById('saveBranchesBtn').addEventListener('click', saveBranches);
+document.getElementById('resetBranchesBtn').addEventListener('click', resetBranchesToDefault);
 
 // ---------- 지점 관리 (추가/삭제) ----------
 function renderBranchManager(){
@@ -393,6 +442,7 @@ function renderBranchManager(){
     chip.querySelector('button').addEventListener('click', () => removeBranch(b));
     el.appendChild(chip);
   });
+  updateBranchSessionNote();
 }
 
 function refreshAllBranchSelects(){
