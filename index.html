@@ -347,7 +347,7 @@
     <button class="add-row" id="addRowBtn" style="margin-top:12px;">+ 지점 행 추가</button>
     <div class="hint">
       각 행에서 지점을 먼저 선택하고, 그 옆 칸에 해당 지점의 통계를 붙여넣어 주세요.<br>
-      순서: <code>총매출  총 객실수  숙박수  점유율  객단가  객실당매출</code> (탭 또는 공백으로 구분, 예: 벤디트 표에서 그대로 드래그해서 복사)
+      순서: <code>총 매출  객단가  객실당매출  총 객실수  숙박자수  점유율</code> (탭 또는 공백으로 구분, 예: 벤디트 표에서 그대로 드래그해서 복사)
     </div>
     <div class="actions">
       <button class="primary" id="generateBtn">보고서 생성</button>
@@ -528,7 +528,7 @@ function addRow(defaultBranch){
     </div>
     <div class="field data-field">
       <span class="field-label">붙여넣기</span>
-      <textarea class="data-input" rows="1" placeholder="예: 51,098,244	248	238	96%	214,699	206,041"></textarea>
+      <textarea class="data-input" rows="1" placeholder="예: 51,098,244	214,699	206,041	248	238	96%"></textarea>
     </div>
     <button class="remove-row" title="이 행 삭제">×</button>
   `;
@@ -551,10 +551,10 @@ function parseRowValue(raw, branchName){
   }
 
   if (cols.length < 6) {
-    throw new Error(`[${branchName}] 값이 6개(총매출/총 객실수/숙박수/점유율/객단가/객실당매출) 미만입니다.`);
+    throw new Error(`[${branchName}] 값이 6개(총매출/객단가/객실당매출/총 객실수/숙박자수/점유율) 미만입니다.`);
   }
 
-  const [revenue, total, occupied, rate, adr, revpar] = cols.slice(0, 6).map(cleanNumber);
+  const [revenue, adr, revpar, total, occupied, rate] = cols.slice(0, 6).map(cleanNumber);
 
   [revenue, total, occupied, adr, revpar].forEach(v => {
     if (v === '' || isNaN(Number(v))) {
@@ -700,7 +700,7 @@ function renderExcelPreview(){
   <table class="excel-table">
     <thead>
       <tr>
-        <th>지점</th><th>월</th><th>총 매출</th><th>총 객실수</th><th>숙박수</th><th>점유율</th><th>객단가</th><th>객실당 매출</th><th></th>
+        <th>지점</th><th>월</th><th>총 매출</th><th>객단가</th><th>객실당 매출</th><th>총 객실수</th><th>숙박자수</th><th>점유율</th><th></th>
       </tr>
     </thead>
     <tbody>`;
@@ -711,11 +711,11 @@ function renderExcelPreview(){
       <td class="branch-cell">${r.branch}</td>
       <td>${r.month}월</td>
       <td>${formatNumber(r.revenue)}원</td>
+      <td>${formatNumber(r.adr)}원</td>
+      <td>${formatNumber(r.revpar)}원</td>
       <td>${r.total}</td>
       <td>${r.occupied}</td>
       <td>${r.rate}%</td>
-      <td>${formatNumber(r.adr)}원</td>
-      <td>${formatNumber(r.revpar)}원</td>
       <td><button class="row-remove" data-idx="${realIdx}" title="삭제">×</button></td>
     </tr>`;
   });
@@ -761,21 +761,21 @@ document.getElementById('downloadExcelBtn').addEventListener('click', () => {
   });
 
   const title = buildExcelTitle();
-  const header = ['지점', '월', '총 매출', '총 객실수', '숙박수', '점유율', '객단가', '객실당 매출'];
+  const header = ['지점', '월', '총 매출', '객단가', '객실당 매출', '총 객실수', '숙박자수', '점유율'];
   const body = sorted.map(r => [
     r.branch,
     `${r.month}월`,
     r.revenue,
+    r.adr,
+    r.revpar,
     r.total,
     r.occupied,
     `${r.rate}%`,
-    r.adr,
-    r.revpar,
   ]);
 
   const ws = XLSX.utils.aoa_to_sheet([[title], header, ...body]);
   ws['!cols'] = [
-    { wch: 12 }, { wch: 8 }, { wch: 16 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 14 }
+    { wch: 12 }, { wch: 8 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 10 }
   ];
   ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: header.length - 1 } }];
 
